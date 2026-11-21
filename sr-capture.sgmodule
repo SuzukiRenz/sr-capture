@@ -17,8 +17,13 @@ debug = 0, label=调试模式(0关1开)
 # pattern 只匹配规则表里出现过的域名，不要用 .* 或 ^https?:// 全量匹配。
 # 全量匹配 + requires-body=1 会让每个请求都触发脚本并缓冲响应体，
 # 请求一多小火箭会跳过脚本执行，表现就是「模块完全没反应」。
-# 加新域名时，同步改下面两个 pattern。
+# 加新域名时，同步改下面两个 pattern 和 [MITM] 的 hostname。
 sr-capture-req = type=http-request,pattern=^https?:\/\/(waimai-guide\.ele\.me|tb\.ele\.me|mtop\.ele\.me|h\.app\.coc\.10086\.cn|client\.app\.coc\.10086\.cn|wx\.10086\.cn|jd\.com|meituan\.com)\/,requires-body=0,max-size=0,script-path=https://raw.githubusercontent.com/SuzukiRenz/sr-capture/main/sr-capture.js,timeout=60
 
 # 响应侧：只有规则表里写了 response.body 才需要
 sr-capture-res = type=http-response,pattern=^https?:\/\/(waimai-guide\.ele\.me|tb\.ele\.me|mtop\.ele\.me|client\.app\.coc\.10086\.cn|wx\.10086\.cn)\/,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/SuzukiRenz/sr-capture/main/sr-capture.js,timeout=60
+
+# 需要解密的域名。这一段是标准写法，作用是告诉小火箭「这些域名的 HTTPS 要解密」。
+# 前提：App 里已安装并信任证书、且全局 HTTPS 解密已开启，否则本段不生效。
+[MITM]
+hostname = %APPEND% waimai-guide.ele.me, tb.ele.me, mtop.ele.me, h.app.coc.10086.cn, client.app.coc.10086.cn, wx.10086.cn, jd.com, meituan.com

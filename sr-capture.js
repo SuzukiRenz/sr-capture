@@ -33,6 +33,7 @@ const STORE_RULES = 'sr_capture_rules_v1';
 const STORE_RULES_AT = 'sr_capture_rules_at_v1';
 const STORE_COOLDOWN = 'sr_capture_cooldown_v1';
 const STORE_LASTVAL = 'sr_capture_lastval_v1';
+const STORE_INITED = 'sr_capture_inited_v1';
 
 // 规则表缓存有效期（秒），到期才重新拉，避免每条请求都请求一次
 const RULES_TTL = 600;
@@ -142,14 +143,35 @@ async function getRules() {
   if (!urls.length) return [];
 
   let all = [];
+  let fetchedOk = 0;
+  const fails = [];
   for (const u of urls) {
     const text = await fetchText(u);
-    if (!text) continue;
+    if (!text) { fails.push(u); continue; }
+    fetchedOk++;
     all = all.concat(parseRules(text));
   }
   // 只留启用且填了必要字段的规则
   all = all.filter(r => r && r.enable !== false && r.host && r.source);
-  if (all.length) saveRules(all);
+
+  // 拉取失败/解析为空时给出可见提示，否则模块会静默失效，
+  // 用户只看到「模块没反应」，根本不知道是网络还是配置问题。
+  if (!fetchedOk) {
+    notify('❌ 抓包模块：规则表拉取失败',
+      '可能是网络无法访问 raw.githubusercontent.com',
+      '失败地址：\n' + fails.join('\n') +
+      '\n\n解决：把规则表地址换成 jsDelivr 镜像\n' +
+      'https://fastly.jsdelivr.net/gh/SuzukiRenz/sr-capture@main/sr-capture-rules.conf');
+    return [];
+  }
+  if (!all.length) {
+    notify('⚠️ 抓包模块：规则表为空',
+      '拉到了内容但没有可用规则',
+      '检查 enable/host/source 字段是否填对');
+    return [];
+  }
+
+  saveRules(all);
   return all;
 }
 
@@ -295,7 +317,17 @@ async function main() {
 
   const rules = await getRules();
   if (!rules.length) {
-    if (CFG.debug === 1) notify('⚠️ 抓包模块', '规则表为空', '检查 ruleURLs 是否有内容');
+    return;   // getRules 内部已经弹过具体原因了
+  }
+
+  // 首次成功加载规则时提示一次，让用户确知模块活着。
+  // 否则「装好了但没反应」无从判断到底是没加载、还是没命中。
+  const seen = $persistentStore.read(STORE_INITED);
+  if (!seen) {
+    $persistentStore.write('1', STORE_INITED);
+    notify('✅ 抓包模块已就绪',
+      '已加载 ' + rules.length + ' 条规则',
+      rules.map(r => (r.enable === false ? '○ ' : '● ') + r.label).join('\n'));
     return;
   }
 

@@ -294,15 +294,31 @@ function markNotified(key) {
 
 /* ---------------- 主流程 ---------------- */
 
+// 统一主机名格式：取 host、转小写、去掉尾部点、去掉端口。
+// 不统一的话 "WWW.Example.COM." 这种写法会漏匹配。
+function normalizeHost(input) {
+  let s = String(input || '').trim();
+  // 传进来的可能是完整 URL
+  const m = s.match(/^https?:\/\/([^\/?#]+)/i);
+  if (m) s = m[1];
+  s = s.toLowerCase();
+  s = s.replace(/:\d+$/, '');     // 去端口
+  s = s.replace(/^\.+/, '');      // 去前导点
+  s = s.replace(/\.+$/, '');      // 去尾部点
+  return s;
+}
+
 function matchRules(rules, url) {
+  const host = normalizeHost(url);
   return rules.filter((r) => {
-    // host 支持 "a.com" 这种包含匹配，也支持写成 /正则/
+    // host 支持域名后缀匹配，也支持写成 /正则/
     if (typeof r.host === 'string' && r.host.startsWith('/') && r.host.endsWith('/')) {
       try {
-        return new RegExp(r.host.slice(1, -1)).test(url);
+        return new RegExp(r.host.slice(1, -1), 'i').test(url);
       } catch (e) { return false; }
     }
-    return url.indexOf(r.host) >= 0;
+    const h = normalizeHost(r.host);
+    return host === h || host.endsWith('.' + h);
   }).filter((r) => {
     if (!r.pathRegex) return true;
     try {
@@ -331,7 +347,26 @@ async function main() {
     return;
   }
 
-  const matched = matchRules(rules, url);
+  // .sgmodule 用通配 pattern 后会收到所有请求，这里先做最廉价的域名预筛，
+  // 不命中就直接返回，不做正则、不碰 body，尽量把开销压到最低。
+  const host = normalizeHost(url);
+  if (!host) return;
+  const candidates = rules.filter((r) => {
+    if (r.enable === false) return false;
+    const h = normalizeHost(r.host);
+    if (!h) return false;
+    if (String(r.host || '').startsWith('/')) return true;   // 正则形式，交给后续匹配
+    // 精确相等或子域名后缀匹配。不能用 indexOf ——
+    // "waimai-guide.ele.me.evil.com" 会因为包含 "waimai-guide.ele.me" 而误命中，
+    // 那等于把 Cookie 往仿冒站点上送。
+    return host === h || host.endsWith('.' + h);
+  });
+  if (!candidates.length) {
+    if (CFG.debug === 1) notify('🔍 未命中', '', host);
+    return;
+  }
+
+  const matched = matchRules(candidates, url);
   if (!matched.length) {
     if (CFG.debug === 1) notify('🔍 未命中', '', url);
     return;

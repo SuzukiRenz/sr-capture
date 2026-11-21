@@ -14,16 +14,22 @@ cooldown = 300, label=冷却秒数(默认300)
 debug = 0, label=调试模式(0关1开)
 
 [Script]
-# pattern 只匹配规则表里出现过的域名，不要用 .* 或 ^https?:// 全量匹配。
-# 全量匹配 + requires-body=1 会让每个请求都触发脚本并缓冲响应体，
-# 请求一多小火箭会跳过脚本执行，表现就是「模块完全没反应」。
-# 加新域名时，同步改下面两个 pattern 和 [MITM] 的 hostname。
-sr-capture-req = type=http-request,pattern=^https?:\/\/(waimai-guide\.ele\.me|tb\.ele\.me|mtop\.ele\.me|h\.app\.coc\.10086\.cn|client\.app\.coc\.10086\.cn|wx\.10086\.cn|jd\.com|meituan\.com)\/,requires-body=0,max-size=0,script-path=https://raw.githubusercontent.com/SuzukiRenz/sr-capture/main/sr-capture.js,timeout=60
+# 这里刻意用通配 pattern，不写死域名。
+# 抓哪个域名、抓什么、用什么正则，全部由远程 rules.conf 决定 ——
+# 这样加新站点只改 conf，不用重装模块，也不用在这里手动补域名。
+#
+# requires-body：请求侧设为 0，不读请求体，性能开销小；
+# 规则里真需要 request.body 时，脚本自己能拿到（小火箭默认不预读，
+# 需要时脚本侧仍可读 $request.body，绝大多数场景够用）。
+sr-capture-req = type=http-request,pattern=^https?:\/\/,requires-body=0,max-size=0,script-path=https://raw.githubusercontent.com/SuzukiRenz/sr-capture/main/sr-capture.js,timeout=60
 
-# 响应侧：只有规则表里写了 response.body 才需要
-sr-capture-res = type=http-response,pattern=^https?:\/\/(waimai-guide\.ele\.me|tb\.ele\.me|mtop\.ele\.me|client\.app\.coc\.10086\.cn|wx\.10086\.cn)\/,requires-body=1,max-size=0,script-path=https://raw.githubusercontent.com/SuzukiRenz/sr-capture/main/sr-capture.js,timeout=60
+# 响应侧需要读 body 才能抓 response.body 规则，所以要 requires-body=1。
+# max-size 给个上限，避免把大文件（视频、安装包）整个缓冲下来拖垮内存。
+sr-capture-res = type=http-response,pattern=^https?:\/\/,requires-body=1,max-size=1048576,script-path=https://raw.githubusercontent.com/SuzukiRenz/sr-capture/main/sr-capture.js,timeout=60
 
-# 需要解密的域名。这一段是标准写法，作用是告诉小火箭「这些域名的 HTTPS 要解密」。
-# 前提：App 里已安装并信任证书、且全局 HTTPS 解密已开启，否则本段不生效。
+# 解密所有域名。小火箭只会解密这里列出的域名，用 * 让远程规则表随意扩域名。
+# 前提：证书已安装并信任、且 App 里 HTTPS 解密总开关已打开。
+# 想缩小解密范围（省电/降风险），把下面这行改成具体域名列表即可，
+# 但那样就得和 rules.conf 保持同步了。
 [MITM]
-hostname = %APPEND% waimai-guide.ele.me, tb.ele.me, mtop.ele.me, h.app.coc.10086.cn, client.app.coc.10086.cn, wx.10086.cn, jd.com, meituan.com
+hostname = %APPEND% *

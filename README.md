@@ -30,7 +30,26 @@ https://raw.githubusercontent.com/SuzukiRenz/sr-capture/main/sr-capture.sgmodule
 开启 **HTTPS 解密**（部分版本在「配置 → 本地文件 → 编辑」里）。
 模块里的 `[MITM] hostname` 只是声明要解密的域名，不能替代上面三步。
 
-## 参数
+## 加新域名：不用改模块
+
+这是本模块和一般抓包脚本最大的区别。`.sgmodule` 里用的是通配：
+
+```ini
+[Script]
+sr-capture-req = ... pattern=^https?:\/\/,requires-body=0 ...
+sr-capture-res = ... pattern=^https?:\/\/,requires-body=1 ...
+
+[MITM]
+hostname = %APPEND% *
+```
+
+**新增站点只改 `sr-capture-rules.conf`，不用动模块、不用重装、不用手动填域名。**
+
+脚本收到请求后先做一次极廉价的域名预筛（字符串比较，不跑正则、不碰 body），
+不命中立刻返回，所以通配不会拖慢网络。
+
+> 代价：所有 HTTPS 都会被解密。想省电或缩小暴露面，可以把 `[MITM]` 的 `*`
+> 换成具体域名，但那样就得和 conf 手动保持同步了。
 
 模块编辑页 `[Argument]`：
 

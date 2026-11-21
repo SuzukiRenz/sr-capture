@@ -25,8 +25,9 @@ https://raw.githubusercontent.com/SuzukiRenz/sr-capture/main/sr-capture.sgmodule
 
 把 `sr-capture.sgmodule` 内容整段贴进去。
 
-**必须做的额外一步**：设置 → MITM → 安装证书 + 信任 + 开启开关。
-否则 HTTPS 抓不到，`hostname = %APPEND% *` 已在模块里写好。
+**必须做的额外一步**：小火箭没有叫「MITM」的菜单（那是 Quantumult X 的叫法）。
+证书在 **设置 → 证书** 里生成并安装，装完去「设置 → 通用 → 关于本机 → 证书信任设置」
+把小火箭的开关打开，最后回小火箭开启 **设置 → HTTPS 解密**。
 
 ## 参数
 

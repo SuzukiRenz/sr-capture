@@ -16,7 +16,7 @@
 **方式一：直接订阅 raw 地址**
 
 ```
-https://raw.githubusercontent.com/SuzukiRenz/my_scripts/main/shadowrocket/sr-capture.sgmodule
+https://raw.githubusercontent.com/SuzukiRenz/sr-capture/main/sr-capture.sgmodule
 ```
 
 小火箭 → 配置 → 模块 → 右上角 `+` → 粘贴上面地址。
@@ -118,8 +118,7 @@ cookie2=2295f4b3; sid=abc; SID=MjI5; USERID=248306984; ...
   删模块重装，或把 `cooldown` 临时设 0
 - `valueRegex` 写错不会报错，只是匹配不到。调规则时开 `debug=1` 看 URL 有没有命中
 
-## 和 QX_get_requests 的区别
+## 和传统写法的区别
 
-那个项目是「每条规则配一个专用 JS」，抓完直接 `$notify` 固定字段。
-本模块是「一个 JS + 远程规则表」，加规则只要改 conf，不用碰代码。
-如果你还要「抓到直接写青龙变量」的能力，本仓 `scripts/` 下另有 QLTools 那套实现。
+常见做法是「每条规则配一个专用 JS」，抓完 `$notify` 固定字段。
+本模块是「一个 JS + 远程规则表」，加规则只要改 conf，不用碰代码，也不用重装模块。
